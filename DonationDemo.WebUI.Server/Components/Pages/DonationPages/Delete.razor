@@ -1,0 +1,55 @@
+﻿@page "/donations/delete/{id:int}"
+@using DonationDemo.Application.Services
+@using DonationDemo.Domain.Entities
+@inject DonationService DonationService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Delete Donation</PageTitle>
+<h1>Delete Donation</h1>
+
+@if (donation == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="col mb-4">
+        <dl class="row">
+            <dt class="col-sm-3">Date</dt>
+            <dd class="col-sm-9">@donation.Date.ToShortDateString()</dd>
+            <dt class="col-sm-3">Amount</dt>
+            <dd class="col-sm-9">@donation.Amount</dd>
+            <dt class="col-sm-3">Payment Method</dt>
+            <dd class="col-sm-9">@paymentMethods.FirstOrDefault(p => p.Id == @donation.PaymentMethodId)?.Method</dd>
+            <dt class="col-sm-3">Payment Method Notes</dt>
+            <dd class="col-sm-9">@donation.PaymentMethodNotes</dd>
+            <dt class="col-sm-3">Notes</dt>
+            <dd class="col-sm-9">@donation.Notes</dd>
+        </dl>
+    </div>
+
+    <div class="col mb-4">
+        <button class="btn btn-danger" @onclick="DeleteDonation">Delete</button>
+        <a class="btn btn-primary" href="/donations" role="button">Back</a>
+    </div>
+}
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Donation? donation;
+    private List<PaymentMethod> paymentMethods = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        donation = await DonationService.GetDonationByIdAsync(id);
+        paymentMethods = (await DonationService.GetAllPaymentMethodAsync()).ToList();
+    }
+
+    private async Task DeleteDonation()
+    {
+        await DonationService.DeleteDonationAsync(id);
+        NavigationManager.NavigateTo("/donations");
+    }
+}

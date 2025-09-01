@@ -1,0 +1,101 @@
+﻿@page "/donations/edit/{id:int}"
+@using DonationDemo.Application.Services
+@using DonationDemo.Domain.Entities
+@inject DonationService DonationService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Edit Donation</PageTitle>
+<h1>Edit Donation</h1>
+
+@if (donation == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <EditForm Model="@donation" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="col mb-4">
+            <label>Date</label>
+            <InputDate @bind-Value="donation.Date" class="form-control" />
+            <ValidationMessage For="@(() => donation.Date)" />
+        </div>
+
+        <div class="col mb-4">
+            <label>Amount (GBP)</label>
+            <InputNumber @bind-Value="donation.Amount" class="form-control" step="0.01" />
+            <ValidationMessage For="@(() => donation.Amount)" />
+        </div>
+
+        <div class="col mb-4">
+            <label>Payment Method</label>
+            <InputSelect @bind-Value="donation.PaymentMethodId" class="form-select">
+                <option value="">-- Select Payment Method --</option>
+                @foreach (var paymentMethod in paymentMethods)
+                {
+                    <option value="@paymentMethod.Id">@paymentMethod.Method</option>
+                }
+            </InputSelect>
+            <ValidationMessage For="() => donation.PaymentMethodId" />
+        </div>
+
+        @if (@IsPaymentMethodOtherSelected(donation.PaymentMethodId))
+        {
+            <div class="col mb-4">
+                <label>Payment Method Notes:</label>
+                <InputText @bind-Value="donation.PaymentMethodNotes" class="form-control" />
+                <ValidationMessage For="() => donation.PaymentMethodNotes" />
+            </div>
+        }
+
+        <div class="col mb-4">
+            <label>Notes:</label>
+            <InputTextArea @bind-Value="donation.Notes" class="form-control" style="min-height: 150px; max-height: 200px;" />
+        </div>
+
+        <div class="col mb-4">
+            <button type="submit" class="btn btn-primary">Save</button>
+            <a class="btn btn-primary" href="/donations" role="button">Back</a>
+        </div>
+
+    </EditForm>
+}
+
+
+@code {
+    [Parameter] public int id { get; set; }
+
+    private Donation? donation;
+    private List<PaymentMethod> paymentMethods = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        donation = await DonationService.GetDonationByIdAsync(id);
+        paymentMethods = (await DonationService.GetAllPaymentMethodAsync()).ToList();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (donation != null)
+        {
+            if (!IsPaymentMethodOtherSelected(donation.PaymentMethodId))
+            {
+                donation.PaymentMethodNotes = string.Empty;
+            }
+
+            await DonationService.UpdateDonationAsync(donation);
+            NavigationManager.NavigateTo("/donations");
+        }
+    }
+
+    private bool IsPaymentMethodOtherSelected(int paymentMethodId)
+    {
+        bool isPaymentMethodOtherSelected = false;
+        isPaymentMethodOtherSelected = paymentMethods.FirstOrDefault(e => e.Id == paymentMethodId)?.Method == "Other";
+
+        return isPaymentMethodOtherSelected;
+    }
+}

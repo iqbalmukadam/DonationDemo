@@ -1,0 +1,89 @@
+﻿@page "/donations/create"
+@using DonationDemo.Application.Services
+@using DonationDemo.Domain.Entities
+@inject DonationService DonationService
+@inject NavigationManager NavigationManager
+@rendermode InteractiveServer
+
+<PageTitle>Create Donation</PageTitle>
+<h1>Create Donation</h1>
+
+<EditForm Model="newDonation" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="col mb-4">
+        <label>Date</label>
+        <InputDate @bind-Value="newDonation.Date" class="form-control" />
+        <ValidationMessage For="@(() => newDonation.Date)" />
+    </div>
+
+    <div class="col mb-4">
+        <label>Amount (GBP)</label>
+        <InputNumber @bind-Value="newDonation.Amount" class="form-control" step="0.01" />
+        <ValidationMessage For="@(() => newDonation.Amount)" />
+    </div>
+
+    <div class ="col mb-4">
+        <label>Payment Method</label>
+        <InputSelect @bind-Value="newDonation.PaymentMethodId" class="form-select">
+            <option value="">-- Select Payment Method --</option>
+            @foreach (var paymentMethod in paymentMethods)
+            {
+                <option value="@paymentMethod.Id">@paymentMethod.Method</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => newDonation.PaymentMethodId" />
+    </div>
+
+    @if (@IsPaymentMethodOtherSelected(newDonation.PaymentMethodId))
+    {
+        <div class="col mb-4">
+            <label>Payment Method Notes:</label>
+            <InputText @bind-Value="newDonation.PaymentMethodNotes" class="form-control" />
+            <ValidationMessage For="() => newDonation.PaymentMethodNotes" />
+        </div>
+    }
+
+    <div class="col mb-4">
+        <label>Notes:</label>
+        <InputTextArea @bind-Value="newDonation.Notes" class="form-control notes-textarea" style="min-height: 150px; max-height: 200px;" />
+    </div>
+
+    <div class ="col mb-4">
+        <button type="submit" class="btn btn-success">Create</button>
+        <a class="btn btn-primary" href="/donations" role="button">Back</a>
+    </div>
+
+</EditForm>
+
+
+@code {
+    private Donation newDonation = new();
+    private List<PaymentMethod> paymentMethods = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        paymentMethods = (await DonationService.GetAllPaymentMethodAsync()).ToList();
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (!IsPaymentMethodOtherSelected(newDonation.PaymentMethodId))
+        {
+            newDonation.PaymentMethodNotes = string.Empty;
+        }
+
+        await DonationService.AddDonationAsync(newDonation);
+        NavigationManager.NavigateTo("/donations");
+    }
+
+    private bool IsPaymentMethodOtherSelected(int paymentMethodId)
+    {
+        bool isPaymentMethodOtherSelected = false;
+        isPaymentMethodOtherSelected = paymentMethods.FirstOrDefault(e => e.Id == paymentMethodId)?.Method == "Other";
+
+        return isPaymentMethodOtherSelected;
+    }
+
+}

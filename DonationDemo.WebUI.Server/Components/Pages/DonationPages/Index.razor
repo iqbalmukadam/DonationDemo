@@ -1,0 +1,226 @@
+﻿@page "/donations"
+@using DonationDemo.Application.Services
+@using DonationDemo.Domain.Entities
+@inject DonationService DonationService
+@using Microsoft.AspNetCore.Components.QuickGrid;
+@rendermode InteractiveServer
+
+
+<PageTitle>Donations</PageTitle>
+<h1>Donations</h1>
+
+<p><a class="btn btn-success" href="donations/create" role="button">Create</a></p>
+
+@if (donations == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+
+    <QuickGrid Items="donationsQueryable" Class="table table-hover table-striped" Pagination="pagination">
+
+        <PropertyColumn Title="Date" Property="f => f.Date" Format="dd/MM/yyyy" Sortable="true" IsDefaultSortColumn="true" InitialSortDirection="SortDirection.Ascending">
+            <ColumnOptions>
+                <div class="col mb-3">
+                    <input type="date" @bind="searchMinimumDateFilter" class="form-control" onkeydown="return false;" placeholder="Minimum date..." />
+                    <input type="date" @bind="searchMaximumDateFilter" style="margin-top:10px;" class="form-control" onkeydown="return false;" placeholder="Maximum date..." />
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" @onclick="GetData">Filter</button>
+                        <button class="btn btn-primary" @onclick="ClearDateFilter">Clear</button>
+                    </div>
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+
+        <PropertyColumn Title="Amount (GBP)" Property="f => f.Amount" Sortable="true">
+        <ColumnOptions>
+                <div class="col mb-3">
+                    <input @bind="searchMinimumAmountFilter" class="form-control" placeholder="Minimum amount..." />
+                    <input @bind="searchMaximumAmountFilter" style="margin-top:10px;" class="form-control" placeholder="Maximum amount..." />
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" @onclick="GetData">Filter</button>
+                        <button class="btn btn-primary" @onclick="ClearAmountFilter">Clear</button>
+                    </div>
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+
+        <PropertyColumn Title="Payment Method" Property="f => paymentMethods.FirstOrDefault(p => p.Id == f.PaymentMethodId)!.Method" Sortable="true">
+            <ColumnOptions>
+                <div class="col mb-3">
+                    <input @bind="searchPaymentMethodFilter" class="form-control" autofocus on placeholder="Payment method..." />
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" @onclick="GetData">Filter</button>
+                        <button class="btn btn-primary" @onclick="ClearPaymentMethodFilter">Clear</button>
+                    </div>
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+
+        <PropertyColumn Title="Payment Method Notes" Property="f => f.PaymentMethodNotes" Sortable="true">
+            <ColumnOptions>
+                <div class="col mb-3">
+                    <input @bind="searchPaymentMethodNotesFilter" class="form-control" autofocus on placeholder="Payment method notes..." />
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" @onclick="GetData">Filter</button>
+                        <button class="btn btn-primary" @onclick="ClearPaymentMethodNotesFilter">Clear</button>
+                    </div>
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+
+        <PropertyColumn Title="Notes" Property="f => (f.Notes!.Length > 50 ? f.Notes.Substring(0, 50) : f.Notes)" Sortable="true">
+            <ColumnOptions>
+                <div class="col mb-3">
+                    <input @bind="searchNotesFilter" class="form-control" autofocus on placeholder="Notes..." />
+                    <div style="margin-top:10px;">
+                        <button class="btn btn-primary" @onclick="GetData">Filter</button>
+                        <button class="btn btn-primary" @onclick="ClearNotesFilter">Clear</button>
+                    </div>
+                </div>
+            </ColumnOptions>
+        </PropertyColumn>
+
+        <TemplateColumn Title="Actions">
+            <div>
+                <span>
+                    <a class="btn btn-primary" href="@($"donations/details/{@context.Id}")" role="button">Details</a>
+                    <a class="btn btn-primary" href="@($"donations/edit/{@context.Id}")" role="button">Edit</a>
+                    <a class="btn btn-danger" href="@($"donations/delete/{@context.Id}")" role="button">Delete</a>
+                </span>
+            </div>
+        </TemplateColumn>
+
+    </QuickGrid>
+
+    <Paginator State="@pagination" />
+}
+
+@code {
+    private List<Donation>? donations = new();
+    private IQueryable<Donation> donationsQueryable = Enumerable.Empty<Donation>().AsQueryable();
+
+    private DateOnly? searchMinimumDateFilter = null;
+    private DateOnly? searchMaximumDateFilter = null;
+
+    private string searchMinimumAmountFilter = string.Empty;
+    private string searchMaximumAmountFilter = string.Empty;
+
+    private string searchPaymentMethodFilter = string.Empty;
+    private string searchPaymentMethodNotesFilter = string.Empty;
+    private string searchNotesFilter = string.Empty;
+
+    private List<PaymentMethod> paymentMethods = new();
+
+    PaginationState pagination = new PaginationState { ItemsPerPage = 10 };
+
+    protected override async Task OnInitializedAsync()
+    {
+        paymentMethods = (await DonationService.GetAllPaymentMethodAsync()).ToList();
+        donations = (await DonationService.GetDonationsAsync()).ToList();
+        GetData();
+    }
+
+    private bool IsDecimmalValue(string strDecimalValue)
+    {
+        decimal value;
+        bool isDecimmalValue = false;
+
+        if (Decimal.TryParse(strDecimalValue, out value))
+        {
+            isDecimmalValue = true;
+        }
+
+        return isDecimmalValue;
+    }
+
+    private void ClearDateFilter()
+    {
+        searchMinimumDateFilter = null;
+        searchMaximumDateFilter = null;
+        GetData();
+    }
+
+    private void ClearAmountFilter()
+    {
+        searchMinimumAmountFilter = string.Empty;
+        searchMaximumAmountFilter = string.Empty;
+        GetData();
+    }
+
+    private void ClearPaymentMethodFilter()
+    {
+        searchPaymentMethodFilter = string.Empty;
+        GetData();
+    }
+
+    private void ClearPaymentMethodNotesFilter()
+    {
+        searchPaymentMethodNotesFilter = string.Empty;
+        GetData();
+    }
+
+    private void ClearNotesFilter()
+    {
+        searchNotesFilter = string.Empty;
+        GetData();
+    }
+
+    private void GetData()
+    {
+        if (!IsDecimmalValue(searchMinimumAmountFilter))
+        {
+            searchMinimumAmountFilter = string.Empty;
+        }
+        if (!IsDecimmalValue(searchMaximumAmountFilter))
+        {
+            searchMaximumAmountFilter = string.Empty;
+        }
+
+        if (
+            (searchMinimumDateFilter == null) &&
+            (searchMaximumDateFilter == null) &&
+            String.IsNullOrWhiteSpace(searchMinimumAmountFilter) &&
+            String.IsNullOrWhiteSpace(searchMaximumAmountFilter) &&
+            String.IsNullOrWhiteSpace(searchPaymentMethodFilter) &&
+            String.IsNullOrWhiteSpace(searchPaymentMethodNotesFilter) &&
+            String.IsNullOrWhiteSpace(searchNotesFilter)
+        )
+        {
+            donationsQueryable = donations!.AsQueryable();
+        }
+        else
+        {
+
+            var result = donations!.Where(d =>
+                ((searchMinimumDateFilter == null) ? DateOnly.FromDateTime(d.Date) >= DateOnly.MinValue : DateOnly.FromDateTime(d.Date) >= searchMinimumDateFilter) &&
+                ((searchMaximumDateFilter == null) ? DateOnly.FromDateTime(d.Date) <= DateOnly.MaxValue : DateOnly.FromDateTime(d.Date) <= searchMaximumDateFilter) &&
+
+                (String.IsNullOrWhiteSpace(searchMinimumAmountFilter) ? d.Amount >= Decimal.MinValue : d.Amount >= Decimal.Parse(searchMinimumAmountFilter)) &&
+                (String.IsNullOrWhiteSpace(searchMaximumAmountFilter) ? d.Amount <= Decimal.MaxValue : d.Amount <= Decimal.Parse(searchMaximumAmountFilter)) &&
+
+                (paymentMethods.FirstOrDefault(p => p.Id == d.PaymentMethodId)!.Method != null && paymentMethods.FirstOrDefault(p => p.Id == d.PaymentMethodId)!.Method.Contains(searchPaymentMethodFilter, StringComparison.OrdinalIgnoreCase)) &&
+                (d.PaymentMethodNotes != null && d.PaymentMethodNotes.Contains(searchPaymentMethodNotesFilter, StringComparison.OrdinalIgnoreCase)) &&
+                (d.Notes != null && d.Notes.Contains(searchNotesFilter, StringComparison.OrdinalIgnoreCase))
+            );
+
+            donationsQueryable = Enumerable.Empty<Donation>().AsQueryable();
+
+            if (result.Count() == 0)
+            {
+                return;
+            }
+
+            if (result.Count() > 0)
+            {
+                foreach (var item in result)
+                {
+                    donationsQueryable = donationsQueryable.Concat(new[] { item }.AsQueryable());
+                }
+            }
+
+            return;
+        }
+    }
+}
